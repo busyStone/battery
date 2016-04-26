@@ -31,3 +31,7 @@
 *.bin
 
 sourceIn
+.tags
+.tags_sorted_by_file
+mav.tlog
+mav.tlog.raw
