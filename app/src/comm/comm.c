@@ -1,13 +1,13 @@
 /**
- * @file bettery.c
+ * @file battery.c
  *
- * bettery mananger module.
+ * battery mananger module.
  */
 
 #include "stm32f1xx_hal.h"
 #include "cmsis_os.h"
 #include "comm.h"
-#include "bettery.h"
+#include "battery.h"
 #include "simpleQueue.h"
 #include "sys.h"
 #include "key.h"
@@ -161,40 +161,37 @@ static void CommNegativeResponse(const PMessage pMsg)
  * @param  pMsg - pointer to COMM message structure to be processed.
  * @return none.
  */
+static void encodeMsg(const PMessage pMsg, uint16_t addr){
+    uint16_t regValue;
+
+    batteryInfoGet(addr, (uint8_t *)&regValue, sizeof(uint16_t));
+    memset(&pMsg->data, 0, COMM_BUFFER_SIZE);
+    memcpy(&pMsg->data, &regValue, sizeof(uint16_t));
+    pMsg->size = sizeof(uint16_t) + COMM_MSG_SVC_SIZE;
+    pMsg->crc = CommGetCRC32Checksum(pMsg);
+}
+
 static void CommProcessCommand(const PMessage pMsg)
 {
     uint16_t regValue;
 
     switch (pMsg->msg_id)
     {
+    case 't': /* Reads new sensor settings; */
+        encodeMsg(pMsg, 0);
+        break;
     case 'v': /* Reads new sensor settings; */
-        batteryInfoGet(0, (uint8_t *)&regValue, sizeof(uint16_t));
-        memset(&pMsg->data, 0, COMM_BUFFER_SIZE);
-        memcpy(&pMsg->data, &regValue, sizeof(uint16_t));
-        pMsg->size = sizeof(uint16_t) + COMM_MSG_SVC_SIZE;
-        pMsg->crc = CommGetCRC32Checksum(pMsg);
+        encodeMsg(pMsg, 1);
         break;
     case 'c':
-        batteryInfoGet(2, (uint8_t *)&regValue, sizeof(uint16_t));
-        memset(&pMsg->data, 0, COMM_BUFFER_SIZE);
-        memcpy(&pMsg->data, &regValue, sizeof(uint16_t));
-        pMsg->size = sizeof(uint16_t) + COMM_MSG_SVC_SIZE;
-        pMsg->crc = CommGetCRC32Checksum(pMsg);
+        encodeMsg(pMsg, 2);
         break;
     case 'p':
-        batteryInfoGet(4, (uint8_t *)&regValue, sizeof(uint16_t));
-        memset(&pMsg->data, 0, COMM_BUFFER_SIZE);
-        memcpy(&pMsg->data, &regValue, sizeof(uint16_t));
-        pMsg->size = sizeof(uint16_t) + COMM_MSG_SVC_SIZE;
-        pMsg->crc = CommGetCRC32Checksum(pMsg);
+        encodeMsg(pMsg, 4);
         break;
     case 'r':
-        batteryInfoGet(5, (uint8_t *)&regValue, sizeof(uint16_t));
-        memset(&pMsg->data, 0, COMM_BUFFER_SIZE);
-        memcpy(&pMsg->data, &regValue, sizeof(uint16_t));
-        pMsg->size = sizeof(uint16_t) + COMM_MSG_SVC_SIZE;
-        pMsg->crc = CommGetCRC32Checksum(pMsg);
-        break;         
+        encodeMsg(pMsg, 5);
+        break;
     case 's':
         CommPositiveResponse(pMsg);
         break;
