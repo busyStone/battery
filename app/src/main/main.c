@@ -38,7 +38,7 @@
 #include "ff.h"
 #include "ff_gen_drv.h"
 #include "user_diskio.h" /* defines USER_Driver as external */
-#include "bettery.h"
+#include "battery.h"
 #include "comm.h"
 #include "key.h"
 #include "wd.h"

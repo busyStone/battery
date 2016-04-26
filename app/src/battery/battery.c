@@ -1,13 +1,13 @@
 /**
- * @file bettery.c
+ * @file battery.c
  *
- * bettery mananger module.
+ * battery mananger module.
  */
 
 #include "stm32f1xx_hal.h"
 #include "cmsis_os.h"
 #include "bq40z50.h"
-#include "bettery.h"
+#include "battery.h"
 #include "errno.h"
 #include <stdio.h>
 #include <string.h>
@@ -17,22 +17,22 @@
 
 #define BATTERY_BLOCK_BUF_LEN         (32)
 
-BETT_REG_ENTRY bettery_regs[] =
+BETT_REG_ENTRY battery_regs[] =
 {
-    //{ "Temperature", 0x72, 14, 0, BETT_REG_TYPE_BLOCK, 65536, 0 },
-    { "Voltage", 0x09, BETT_REG_LEN_WORD, 0, BETT_REG_TYPE_UWORD, 65536, 0 },
-    { "Current", 0x0a, BETT_REG_LEN_WORD, 0, 1, 32768, 0 },
-    { "AverageCurrent", 0x0b, BETT_REG_LEN_WORD, 0, 1, 32768, 0 },
-    { "RelativeStateOfChange", 0x0d, BETT_REG_LEN_WORD, 0, BETT_REG_TYPE_UWORD, 100, 0 },
-    { "RemainingCapacity", 0x0f, BETT_REG_LEN_WORD, 0, BETT_REG_TYPE_UWORD, 65536, 0 },
-    { "Cell 1", 0x3f, BETT_REG_LEN_WORD, 0, BETT_REG_TYPE_UWORD, 65535, 0 },
-    { "Cell 2", 0x3e, BETT_REG_LEN_WORD, 0, BETT_REG_TYPE_UWORD, 65535, 0 },
-    { "Cell 3", 0x3d, BETT_REG_LEN_WORD, 0, BETT_REG_TYPE_UWORD, 65536, 0 },
-    { "Cell 4", 0x3c, BETT_REG_LEN_WORD, 0, BETT_REG_TYPE_UWORD, 65536, 0 },
+    { "Temperature",           0x72, 14,                0, BETT_REG_TYPE_BLOCK, 65536, 0 },
+    { "Voltage",               0x09, BETT_REG_LEN_WORD, 0, BETT_REG_TYPE_UWORD, 65536, 0 }, // mV
+    { "Current",               0x0a, BETT_REG_LEN_WORD, 0, BETT_REG_TYPE_SWORD, 32768, 0 }, // mA
+    { "AverageCurrent",        0x0b, BETT_REG_LEN_WORD, 0, BETT_REG_TYPE_SWORD, 32768, 0 }, // mA
+    { "RelativeStateOfChange", 0x0d, BETT_REG_LEN_WORD, 0, BETT_REG_TYPE_UWORD, 100,   0 }, //  predicted remaining battery capacity %
+    { "RemainingCapacity",     0x0f, BETT_REG_LEN_WORD, 0, BETT_REG_TYPE_UWORD, 65536, 0 },
+    { "Cell 1",                0x3f, BETT_REG_LEN_WORD, 0, BETT_REG_TYPE_UWORD, 65535, 0 },
+    { "Cell 2",                0x3e, BETT_REG_LEN_WORD, 0, BETT_REG_TYPE_UWORD, 65535, 0 },
+    { "Cell 3",                0x3d, BETT_REG_LEN_WORD, 0, BETT_REG_TYPE_UWORD, 65536, 0 },
+    { "Cell 4",                0x3c, BETT_REG_LEN_WORD, 0, BETT_REG_TYPE_UWORD, 65536, 0 },
     //{ "Device name", 0x21, 7, 0, BETT_REG_TYPE_BLOCK, 65536, 0 }
 };
 
-uint32_t battery_regs_size = sizeof(bettery_regs) / sizeof(bettery_regs[0]);
+uint32_t battery_regs_size = sizeof(battery_regs) / sizeof(battery_regs[0]);
 
 osThreadId batteryTaskHandle;
 
@@ -75,16 +75,16 @@ void batteryInfoUpdate(void)
 
     for (i = 0; i < battery_regs_size; i++)
     {
-        switch (bettery_regs[i].type)
+        switch (battery_regs[i].type)
         {
         case BETT_REG_TYPE_UWORD:
         case BETT_REG_TYPE_SWORD:
-            ret = bq40z50_word_read(BATTERY_SMBUS_ADDR, bettery_regs[i].cmd, &val);
+            ret = bq40z50_word_read(BATTERY_SMBUS_ADDR, battery_regs[i].cmd, &val);
             if (ret == 0)
             {
-                bettery_regs[i].value = val;
+                battery_regs[i].value = val;
 
-                if (bettery_regs[i].type == 0)
+                if (battery_regs[i].type == BETT_REG_TYPE_UWORD)
                 {
                     tmp = (uint16_t)val;
                 }
@@ -93,27 +93,27 @@ void batteryInfoUpdate(void)
                     tmp = val;
                 }
 
-                if (tmp > bettery_regs[i].max)
+                if (tmp > battery_regs[i].max)
                 {
-                    bettery_regs[i].max = tmp;
+                    battery_regs[i].max = tmp;
                 }
 
-                if (tmp < bettery_regs[i].min)
+                if (tmp < battery_regs[i].min)
                 {
-                    bettery_regs[i].min = tmp;
+                    battery_regs[i].min = tmp;
                 }
             }
             break;
         case BETT_REG_TYPE_BLOCK:
-            ret = bq40z50_block_read(BATTERY_SMBUS_ADDR, bettery_regs[i].cmd, buf, BATTERY_BLOCK_BUF_LEN, 1);
+            ret = bq40z50_block_read(BATTERY_SMBUS_ADDR, battery_regs[i].cmd, buf, BATTERY_BLOCK_BUF_LEN, 1);
             if (ret > 0)
             {
-                if (ret == bettery_regs[i].len)
+                if (ret == battery_regs[i].len)
                 {
                     val = *(uint16_t*)&buf[12];
-                    bettery_regs[i].value = val;
+                    battery_regs[i].value = val;
 
-                    if (bettery_regs[i].type == 0)
+                    if (battery_regs[i].type == 0)
                     {
                         tmp = (uint16_t)val;
                     }
@@ -122,14 +122,14 @@ void batteryInfoUpdate(void)
                         tmp = val;
                     }
 
-                    if (tmp > bettery_regs[i].max)
+                    if (tmp > battery_regs[i].max)
                     {
-                        bettery_regs[i].max = tmp;
+                        battery_regs[i].max = tmp;
                     }
 
-                    if (tmp < bettery_regs[i].min)
+                    if (tmp < battery_regs[i].min)
                     {
-                        bettery_regs[i].min = tmp;
+                        battery_regs[i].min = tmp;
                     }
                 }
                 else
@@ -157,7 +157,7 @@ int16_t batteryInfoGet(uint16_t addr, uint8_t *buffer, uint16_t buf_len)
         return -1;
     }
 
-    memcpy(buffer, &bettery_regs[addr].value, sizeof(uint16_t));
+    memcpy(buffer, &battery_regs[addr].value, sizeof(uint16_t));
 
     return sizeof(uint16_t);
 }
@@ -211,13 +211,13 @@ void batteryInfoShow(void)
     printf("************** battery info **************\r\n");
     for (i = 0; i < battery_regs_size; i++)
     {
-        switch (bettery_regs[i].type)
+        switch (battery_regs[i].type)
         {
         case BETT_REG_TYPE_UWORD:
         case BETT_REG_TYPE_SWORD:
         case BETT_REG_TYPE_BLOCK:
-            printf("%s : %d(min:%d, max:%d)\r\n", bettery_regs[i].name,
-                   (int)bettery_regs[i].value, (int)bettery_regs[i].min, (int)bettery_regs[i].max);
+            printf("%s : %d(min:%d, max:%d)\r\n", battery_regs[i].name,
+                   (int)battery_regs[i].value, (int)battery_regs[i].min, (int)battery_regs[i].max);
             break;
         default:
             break;

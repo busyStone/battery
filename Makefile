@@ -94,7 +94,7 @@ SRCDIRS   = ./freertos/src \
             ./drivers/i2c \
 	    ./drivers/i2c_hw \
             ./drivers/bq40z50 \
-            ./app/src/bettery \
+            ./app/src/battery \
             ./app/src/comm \
 	    ./app/src/wd \
 	    ./misc 
