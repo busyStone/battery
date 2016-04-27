@@ -2,7 +2,7 @@
 #include "cmsis_os.h"
 #include "key.h"
 #include "errno.h"
-#include "bettery.h"
+#include "battery.h"
 #include <stdio.h>
 
 #define KEY_UNSTEABLE_TIME      (2)        /* 20ms */
