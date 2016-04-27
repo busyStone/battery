@@ -351,7 +351,6 @@ void CommStartTask(void const *argument)
     for (;;)
     {
         osDelay(10);
-        key_scan();
         CommReadSerialData();
     }
 }
